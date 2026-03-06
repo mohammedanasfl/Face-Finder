@@ -12,9 +12,14 @@ frontend/react-app/dist/
 # Data & Models (Do not upload large binary files to GitHub)
 data/
 database/
+uploads/
 *.pkl
 *.npy
 *.bin
+*.jpg
+*.jpeg
+*.png
+*.webp
 
 # OS
 .DS_Store
