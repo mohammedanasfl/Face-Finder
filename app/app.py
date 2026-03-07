@@ -20,9 +20,11 @@ from app.auth import get_current_user, get_current_admin
 from app.workers.celery_worker import celery_app
 from app.jobs.import_drive_job import initialize_job, get_job_status
 
-os.makedirs(UPLOADS_PATH, exist_ok=True) # Keep this, it was in original but not in provided Code Edit
+os.makedirs(UPLOADS_PATH, exist_ok=True)
+os.makedirs(RAW_IMAGES_PATH, exist_ok=True)
+os.makedirs(FACES_PATH, exist_ok=True)
 
-app = FastAPI() # Original app initialization. Code Edit has FastAPI(title="Face Event Search API v2.0"), I will use the Code Edit version.
+app = FastAPI()
 
 # Allow frontend to communicate
 app.add_middleware(
