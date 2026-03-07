@@ -18,6 +18,36 @@ services:
       - JWT_SECRET_KEY=yoursecretjwtsigningkey
       - ADMIN_SECRET_KEY=admin-secret-access
       - USER_SECRET_KEY=user-secret-access
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: facefind-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: facefind-celery-worker
+    command: celery -A app.workers.celery_worker worker --loglevel=info
+    volumes:
+      - ./data:/app/data
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
     restart: unless-stopped
 
   frontend:

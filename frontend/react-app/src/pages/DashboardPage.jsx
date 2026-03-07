@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import UploadFace from '../components/UploadFace';
 import UploadEventImages from '../components/UploadEventImages';
 import ImageGrid from '../components/ImageGrid';
+import ImportFromDrive from '../components/ImportFromDrive'; // Added this import
 import { getRole } from '../services/authService';
 
 const DashboardPage = () => {
@@ -20,6 +21,7 @@ const DashboardPage = () => {
                     {role === 'admin' && (
                         <div style={{ flex: '1 1 400px' }}>
                             <UploadEventImages />
+                            <ImportFromDrive /> {/* Added this component */}
                         </div>
                     )}
 

@@ -11,15 +11,40 @@ export const searchFaces = async (file) => {
     return response.data.matches;
 };
 
-export const adminUploadImages = async (files) => {
+export const uploadAdminImages = async (files) => {
     const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
-    }
-
-    const response = await api.post('/admin/upload-images', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+    files.forEach(file => {
+        formData.append('files', file);
     });
 
-    return response.data;
+    try {
+        const response = await api.post('/admin/upload-images', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.detail || 'Admin upload failed';
+    }
+};
+
+export const importFromDrive = async (folderId) => {
+    try {
+        const response = await api.post('/admin/import-drive', {
+            drive_folder_id: folderId
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.detail || 'Failed to start Drive import';
+    }
+};
+
+export const getJobStatus = async (jobId) => {
+    try {
+        const response = await api.get(`/admin/job-status/${jobId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.detail || 'Failed to get job status';
+    }
 };

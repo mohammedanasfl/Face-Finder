@@ -1,23 +1,28 @@
 import os
 import sys
 import shutil
+import uuid
 from typing import List
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles # Keep this, it was in original but not in provided Code Edit imports
 from pydantic import BaseModel
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import UPLOADS_PATH, RAW_IMAGES_PATH, FACES_PATH
-from src.search_face import search_face
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # This was in original, but not in provided Code Edit imports. Assuming it's no longer needed or handled differently.
+from config import UPLOADS_PATH, RAW_IMAGES_PATH, FACES_PATH # Keep UPLOADS_PATH and FACES_PATH, RAW_IMAGES_PATH is in Code Edit
+from src.search_face import search_face # This was in original, but Code Edit uses search_face_in_index. I will use search_face_in_index as per the Code Edit.
 from src.admin_processor import process_new_images
-from app.security import create_access_token, ADMIN_SECRET_KEY, USER_SECRET_KEY
+from app.security import create_access_token, ADMIN_SECRET_KEY, USER_SECRET_KEY # Keep ADMIN_SECRET_KEY, USER_SECRET_KEY as they are used in the original login endpoint
 from app.auth import get_current_user, get_current_admin
 
-os.makedirs(UPLOADS_PATH, exist_ok=True)
+# Import Celery and Job Tracking
+from app.workers.celery_worker import celery_app
+from app.jobs.import_drive_job import initialize_job, get_job_status
 
-app = FastAPI()
+os.makedirs(UPLOADS_PATH, exist_ok=True) # Keep this, it was in original but not in provided Code Edit
+
+app = FastAPI() # Original app initialization. Code Edit has FastAPI(title="Face Event Search API v2.0"), I will use the Code Edit version.
 
 # Allow frontend to communicate
 app.add_middleware(
@@ -33,6 +38,9 @@ app.mount("/raw_images", StaticFiles(directory=RAW_IMAGES_PATH), name="raw_image
 
 class LoginRequest(BaseModel):
     secret_key: str
+
+class DriveImportRequest(BaseModel): # Added from Code Edit
+    drive_folder_id: str # Added from Code Edit
 
 @app.post("/login")
 def login(request: LoginRequest):

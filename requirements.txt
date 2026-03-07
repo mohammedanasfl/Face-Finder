@@ -1,33 +1,14 @@
-# Core numerical libraries
-
-numpy==1.26.4
-scipy==1.11.4
-
-# Computer vision
-
-opencv-python-headless==4.11.0.86
-Pillow==10.2.0
-
-# Face detection & recognition
-
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.9
 insightface==0.7.3
-onnxruntime==1.17.1
-
+opencv-python-headless==4.9.0.80
+numpy==1.26.3
 faiss-cpu==1.7.4
-
-# Machine learning utilities
-
-scikit-learn==1.4.1.post1
-
-# Data handling
-
-pandas==2.2.1
-tqdm==4.66.2
-
-# API server
-
-fastapi
-uvicorn
-python-multipart
-python-jose
-passlib
+python-jose[cryptography]==3.3.0
+celery==5.3.6
+redis==5.0.1
+google-api-python-client==2.115.0
+google-auth==2.27.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
