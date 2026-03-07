@@ -19,9 +19,13 @@ const DashboardPage = () => {
 
                     {/* Render Admin Bulk Uploader ONLY if User is Admin */}
                     {role === 'admin' && (
-                        <div style={{ flex: '1 1 400px' }}>
-                            <UploadEventImages />
-                            <ImportFromDrive /> {/* Added this component */}
+                        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', width: '100%' }}>
+                            <div style={{ flex: '1 1 400px' }}>
+                                <UploadEventImages />
+                            </div>
+                            <div style={{ flex: '1 1 400px' }}>
+                                <ImportFromDrive />
+                            </div>
                         </div>
                     )}
 

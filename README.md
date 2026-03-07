@@ -23,87 +23,63 @@ Upload a selfie, and the application's AI pipeline extracts facial embeddings to
 
 ```text
 face-event-search/
-├── data/
+├── data/                 # Mounted Docker Volume for persistence
 │   ├── raw_images/       # 1. Place your raw event photos here
 │   ├── faces/            # 2. Automatically cropped faces are saved here
 │   └── embeddings/       # 3. Vector embeddings (.npy & .pkl)
 ├── database/             # 4. Compiled FAISS index (.bin)
-├── src/
-│   ├── admin_processor.py# Script: Incrementally processes uploaded images
-│   ├── face_detector.py  # Script: Detects & crops faces from raw_images
-│   ├── face_embedder.py  # Script: Converts crops to vector embeddings
-│   ├── build_index.py    # Script: Normalizes vectors and builds FAISS index
-│   ├── search_face.py    # CLI tool for testing searches globally
-│   └── utils.py          # Shared helpers and model loading
 ├── app/                  # FastAPI Backend Server
 │   ├── app.py            # Main API routes and CORS config
 │   ├── auth.py           # JWT Bearer dependency injection
-│   └── security.py       # JWT creation and role logic
-├── frontend/react-app/src  # React SPA
-│   ├── components/       # Atomic UI building blocks
-│   ├── pages/            # Application views (Login, Dashboard)
-│   ├── services/         # Axios API interceptors and clients
-│   ├── styles/           # Decoupled Vanilla CSS modules
-│   ├── utils/            # Route protection
-│   ├── App.jsx           # React Router implementation
-│   └── main.jsx
-├── config.py
-└── requirements.txt
+│   ├── security.py       # JWT creation and role logic
+│   ├── jobs/             # Job tracking and progress metrics (Redis)
+│   └── workers/          # Background tasks (Celery/gdown)
+├── frontend/             # React SPA (Vite + Nginx)
+├── src/                  # Core Python AI Engine (InsightFace + FAISS)
+└── docker-compose.yml    # Master orchestrator
 ```
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ Installation & Setup (Dockerized)
 
-### 1. Backend & AI Setup
+This application is fully containerized. You do not need to install Python or Node.js on your machine!
 
-Create a Python environment and install the required machine learning and API libraries:
+### 1. Build and Start the Cluster
+
+Make sure you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
 ```bash
-python -m venv venv
-venv\Scripts\activate   # Or `source venv/bin/activate` on Linux/Mac
-pip install -r requirements.txt
+docker-compose up --build -d
 ```
+
+This single command will spin up 4 interconnected containers:
+1. **Frontend:** The React SPA UI (Port `5173`)
+2. **Backend:** The FastAPI server (Port `8000`)
+3. **Redis:** In-memory message broker (Port `6379`)
+4. **Celery Worker:** Background task processor
 
 ### 2. Prepare Your Image Database (Initial Load)
 
-Simply drop your raw event photos (JPG, PNG) into the `data/raw_images` folder.
+You can bulk import event photos easily through the **Admin Dashboard** via two methods:
+1. **Drag & Drop:** Upload photos directly from your computer.
+2. **Google Drive Import:** Paste a public Google Drive Folder ID. The Celery worker will download all images natively in the background and pipe them into the AI engine.
 
-Next, run the three pipeline scripts in order to process the images, extract the AI embeddings, and build the FAISS vector database:
+If you prefer to load files manually via CLI, you can drop images into the `data/raw_images/` folder and run the pipeline scripts inside the backend container:
 
 ```bash
-# Finds every face in every photo and crops them into data/faces/
+# Connect into the backend container
+docker exec -it facefind-backend /bin/bash
+
+# Find every face in every photo and crop them
 python src/face_detector.py
 
-# Converts the crops into vector arrays
+# Convert the crops into vector arrays
 python src/face_embedder.py
 
-# Normalizes the arrays and compiles the FAISS index database
+# Normalize the arrays and compile the FAISS index database
 python src/build_index.py
 ```
-
-*Note: You only need to run these scripts for the initial bulk data load. Future event photos can be uploaded via the Admin Dashboard UI!*
-
----
-
-## 💻 Running the Application
-
-This is a decoupled application, meaning you must run both the backend API and the frontend UI at the same time.
-
-### Start the FastAPI Backend
-In your initialized python environment:
-```bash
-uvicorn app.app:app --reload
-```
-*The API will start running on `http://localhost:8000`.*
-
-### Start the React Frontend
-Open a **new** terminal window:
-```bash
-cd frontend/react-app
-npm install
-npm run dev
-```
-*The UI will start running on `http://localhost:5173`.*
 
 ---
 

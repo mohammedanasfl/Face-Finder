@@ -125,3 +125,32 @@ async def search_face_endpoint(
         raise HTTPException(status_code=404, detail="No matching faces found.")
 
     return JSONResponse(content={"matches": unique_matches})
+
+@app.post("/admin/import-drive")
+async def import_drive_folder(request: DriveImportRequest, current_admin: dict = Depends(get_current_admin)):
+    """Triggers the async Celery background task to pull images from Google Drive."""
+    try:
+        job_id = str(uuid.uuid4())
+        # Instatiate the Redis tracking hash
+        initialize_job(job_id)
+        
+        # Fire off the worker asynchronously
+        celery_app.send_task("process_drive_folder", args=[job_id, request.drive_folder_id])
+        
+        return JSONResponse(content={
+            "job_id": job_id,
+            "status": "processing"
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/admin/job-status/{job_id}")
+async def get_drive_import_status(job_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Polls the Redis job hash to return live counts."""
+    try:
+        status_data = get_job_status(job_id)
+        return JSONResponse(content=status_data)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

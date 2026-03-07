@@ -70,7 +70,7 @@ const ImportFromDrive = () => {
             </h2>
             <p className="section-subtitle">Automatically download and index all event photos from a public Google Drive folder.</p>
 
-            <form onSubmit={handleImport} className="grid-form">
+            <form onSubmit={handleImport} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
                 <input
                     type="text"
                     className="input-field"
@@ -78,9 +78,10 @@ const ImportFromDrive = () => {
                     value={driveFolderId}
                     onChange={(e) => setDriveFolderId(e.target.value)}
                     disabled={loading}
+                    style={{ padding: '16px', borderRadius: '8px', fontSize: '15px' }}
                 />
 
-                <button type="submit" className="btn btn-primary" disabled={loading || !driveFolderId}>
+                <button type="submit" className="btn btn-primary" disabled={loading || !driveFolderId} style={{ padding: '16px', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold' }}>
                     {loading && !jobId ? <Loader /> : 'Start Import Job'}
                 </button>
             </form>

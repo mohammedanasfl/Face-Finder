@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { adminUploadImages } from '../services/faceService';
+import { uploadAdminImages } from '../services/faceService';
 import Loader from './Loader';
 
 const UploadEventImages = () => {
@@ -24,7 +24,7 @@ const UploadEventImages = () => {
         setSuccessMsg('');
 
         try {
-            const result = await adminUploadImages(files);
+            const result = await uploadAdminImages(files);
             setSuccessMsg(result.message);
             setFiles([]); // Clear selection after success
         } catch (err) {

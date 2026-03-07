@@ -13,6 +13,7 @@ frontend/react-app/dist/
 data/
 database/
 uploads/
+models/
 *.pkl
 *.npy
 *.bin
