@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: facefind-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the data directories so that uploaded and processed images persist on the host machine
+      - ./data:/app/data
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+    environment:
+      - PYTHONUNBUFFERED=1
+      - JWT_SECRET_KEY=yoursecretjwtsigningkey
+      - ADMIN_SECRET_KEY=admin-secret-access
+      - USER_SECRET_KEY=user-secret-access
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend/react-app
+      dockerfile: Dockerfile
+    container_name: facefind-frontend
+    ports:
+      - "5173:80" # Exposes the Nginx server on port 5173 to match the Vite dev server expected port
+    depends_on:
+      - backend
+    restart: unless-stopped

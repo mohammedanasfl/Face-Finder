@@ -1,0 +1,22 @@
+# Virtual Environments
+venv/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Data & Database (we will mount these as volumes)
+data/
+database/
+uploads/
+
+# Frontend (Frontend has its own Dockerfile context)
+frontend/
+
+# Git
+.git/
+.gitignore

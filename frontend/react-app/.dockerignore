@@ -1,0 +1,14 @@
+# Node dependencies
+node_modules/
+.npm/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+
+# Git
+.git/
