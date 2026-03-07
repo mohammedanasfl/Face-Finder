@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from config import UPLOADS_PATH, RAW_IMAGES_PATH, FACES_PATH # Keep UPLOADS_PATH and FACES_PATH, RAW_IMAGES_PATH is in Code Edit
 from src.search_face import search_face # This was in original, but Code Edit uses search_face_in_index. I will use search_face_in_index as per the Code Edit.
 from src.admin_processor import process_new_images
-from app.security import create_access_token, ADMIN_SECRET_KEY, USER_SECRET_KEY # Keep ADMIN_SECRET_KEY, USER_SECRET_KEY as they are used in the original login endpoint
+from app.security import create_access_token
 from app.auth import get_current_user, get_current_admin
 
 # Import Celery and Job Tracking
@@ -46,10 +46,14 @@ class DriveImportRequest(BaseModel): # Added from Code Edit
 
 @app.post("/login")
 def login(request: LoginRequest):
-    if request.secret_key == ADMIN_SECRET_KEY:
+    # Fetch latest environment variables dynamically with fallbacks
+    admin_key = os.getenv("ADMIN_SECRET_KEY", "admin-1234")
+    user_key = os.getenv("USER_SECRET_KEY", "user-1234")
+    
+    if request.secret_key == admin_key:
         role = "admin"
         username = "admin"
-    elif request.secret_key == USER_SECRET_KEY:
+    elif request.secret_key == user_key:
         role = "user"
         username = "user"
     else:
