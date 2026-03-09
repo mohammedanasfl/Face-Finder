@@ -4,7 +4,7 @@ const ImageCard = ({ filename, onClick }) => {
     return (
         <div className="grid-item" onClick={onClick}>
             <img
-                src={`http://127.0.0.1:8000/raw_images/${filename}`}
+                src={`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/raw_images/${filename}`}
                 alt={filename}
                 className="grid-item-img"
                 loading="lazy"
