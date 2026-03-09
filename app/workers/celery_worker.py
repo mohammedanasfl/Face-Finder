@@ -52,7 +52,8 @@ def process_drive_folder_task(job_id: str, drive_folder_id: str):
         url = f'https://drive.google.com/drive/folders/{folder_id}?usp=sharing'
         
         # Download the folder contents natively (returns a list of string filepaths)
-        downloaded = gdown.download_folder(url, output=RAW_IMAGES_PATH, quiet=False, use_cookies=False)
+        # Note: remaining_ok=True bypasses the strict 50-file limit error by downloading the first 50 files.
+        downloaded = gdown.download_folder(url, output=RAW_IMAGES_PATH, quiet=False, use_cookies=False, remaining_ok=True)
         
         if not downloaded:
             update_job_progress(job_id, status="completed_no_images")
