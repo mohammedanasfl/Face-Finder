@@ -22,8 +22,7 @@ if broker_url.startswith("rediss://"):
     if "?" in broker_url:
         broker_url = broker_url.split("?")[0]
     ssl_kwargs = {
-        "ssl_cert_reqs": ssl.CERT_NONE,
-        "ssl_cert_reqs": "CERT_NONE"
+        "ssl_cert_reqs": ssl.CERT_NONE
     }
 
 celery_app = Celery(
