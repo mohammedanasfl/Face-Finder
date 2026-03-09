@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the entire backend application
 COPY . .
 
-# Expose the FastAPI port
-EXPOSE 8000
+# Expose the Hugging Face port
+EXPOSE 7860
 
-# Start the uvicorn ASGI server
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start both the uvicorn API and celery worker
+CMD ["bash", "run_huggingface.sh"]
