@@ -10,7 +10,7 @@ EMBEDDINGS_PATH = "data/embeddings"
 os.makedirs(EMBEDDINGS_PATH, exist_ok=True)
 
 # Load insightface model
-app = FaceAnalysis(name="buffalo_l")
+app = FaceAnalysis(name="buffalo_l", allowed_modules=['detection', 'recognition'])
 app.prepare(ctx_id=0, det_size=(640,640))
 
 embeddings = []

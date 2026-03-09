@@ -10,7 +10,7 @@ _app = None
 def get_model():
     global _app
     if _app is None:
-        _app = FaceAnalysis(name="buffalo_l")
+        _app = FaceAnalysis(name="buffalo_l", allowed_modules=['detection', 'recognition'])
         _app.prepare(ctx_id=0, det_size=(640, 640))
     return _app
 

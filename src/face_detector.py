@@ -9,7 +9,7 @@ FACES_OUTPUT_PATH = "data/faces"
 os.makedirs(FACES_OUTPUT_PATH, exist_ok=True)
 
 # Load face detection model
-app = FaceAnalysis(name="buffalo_l")
+app = FaceAnalysis(name="buffalo_l", allowed_modules=['detection', 'recognition'])
 app.prepare(ctx_id=0, det_size=(640, 640))
 
 def detect_faces():
