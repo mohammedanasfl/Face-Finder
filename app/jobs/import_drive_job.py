@@ -4,6 +4,9 @@ import os
 
 # Connect to Redis
 redis_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+if redis_url.startswith("rediss://") and "ssl_cert_reqs" not in redis_url:
+    redis_url += "?ssl_cert_reqs=CERT_NONE"
+    
 redis_client = redis.from_url(redis_url)
 
 def initialize_job(job_id: str):

@@ -12,8 +12,10 @@ from config import RAW_IMAGES_PATH
 
 # Initialize Celery app
 broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+if broker_url.startswith("rediss://") and "ssl_cert_reqs" not in broker_url:
+    broker_url += "?ssl_cert_reqs=CERT_NONE"
+    
 celery_app = Celery("workers", broker=broker_url, backend=broker_url)
-
 def parse_folder_id(input_string):
     """Extracts the folder ID if the user pastes a full Google Drive URL."""
     match = re.search(r'folders/([A-Za-z0-9_-]+)', input_string)
