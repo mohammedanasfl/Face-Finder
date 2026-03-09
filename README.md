@@ -1,3 +1,12 @@
+---
+title: Face Finder Backend
+emoji: 📸
+colorFrom: purple
+colorTo: blue
+sdk: docker
+pinned: false
+---
+
 # FaceFind: AI Event Photo Search
 
 FaceFind is a complete full-stack AI platform built to instantly search massive event photo libraries using facial recognition. 
