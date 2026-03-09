@@ -10,12 +10,29 @@ from app.jobs.import_drive_job import update_job_progress
 from src.admin_processor import process_new_images
 from config import RAW_IMAGES_PATH
 
+import ssl
+
 # Initialize Celery app
 broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-if broker_url.startswith("rediss://") and "ssl_cert_reqs" not in broker_url:
-    broker_url += "?ssl_cert_reqs=CERT_NONE"
-    
-celery_app = Celery("workers", broker=broker_url, backend=broker_url)
+
+# If using a secure Redis connection (e.g., Render), configure SSL kwargs explicitly
+ssl_kwargs = {}
+if broker_url.startswith("rediss://"):
+    # Strip any dangling query parameters we previously injected
+    if "?" in broker_url:
+        broker_url = broker_url.split("?")[0]
+    ssl_kwargs = {
+        "ssl_cert_reqs": ssl.CERT_NONE,
+        "ssl_cert_reqs": "CERT_NONE"
+    }
+
+celery_app = Celery(
+    "workers", 
+    broker=broker_url, 
+    backend=broker_url,
+    broker_use_ssl=ssl_kwargs if ssl_kwargs else None,
+    redis_backend_use_ssl=ssl_kwargs if ssl_kwargs else None
+)
 def parse_folder_id(input_string):
     """Extracts the folder ID if the user pastes a full Google Drive URL."""
     match = re.search(r'folders/([A-Za-z0-9_-]+)', input_string)
