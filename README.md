@@ -13,7 +13,10 @@ FaceFind is a complete full-stack AI platform built to instantly search massive 
 
 Upload a selfie, and the application's AI pipeline extracts facial embeddings to return every single original, high-quality event photo you appeared in.
 
-![FaceFind UI Screenshot](https://via.placeholder.com/800x400.png?text=FaceFind+Premium+Dark+UI)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-React_Frontend-blue?style=for-the-badge&logo=react)](https://face-finder-react.onrender.com/)
+[![API Docs](https://img.shields.io/badge/API_Docs-FastAPI_Swagger-green?style=for-the-badge&logo=fastapi)](https://anas21072001-face-finder.hf.space/docs)
+
+![FaceFind UI Screenshot](./screenshot.png)
 
 ## 🚀 Features
 
