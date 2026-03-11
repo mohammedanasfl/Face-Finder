@@ -144,8 +144,8 @@ python src/build_index.py
 
 1. Open `http://localhost:5173` in your browser.
 2. The system is protected by JWT authentication with role-based access control.
-   - **Admin Login:** Enter `admin-1234`
-   - **User Login:** Enter `user-1234`
+   - **Admin Login:** Enter `admin`
+   - **User Login:** Enter `user`
 3. **If logged in as User:** You can upload a selfie or a clear headshot of a person into the upload zone to perform a Face Search.
 4. **If logged in as Admin:** You gain access to the **Bulk Image Upload** portal. You can drag and drop hundreds of new event photos into the browser. The backend will automatically run the AI pipeline on the new images and append them to the FAISS index without needing to use the CLI.
 5. The API will process the searched image, match the embeddings using Cosine Similarity, and return all the original high-resolution event photos the person is featured in!
