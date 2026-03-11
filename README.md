@@ -41,28 +41,28 @@ graph TD
     A[Admin] -->|Provides Drive Link / Uploads Photos| F
 
     %% Frontend
-    F -->|REST API (FastAPI)| B[Backend API]
+    F -->|REST API - FastAPI| B[Backend API]
 
-    %% Backend API & Auth
+    %% Backend API and Auth
     B -->|Validates JWT| Auth[JWT Security]
     
     %% Async Processing
     B -->|Dispatches Import Job| R[(Redis Message Broker)]
     R -->|Consumes Job| C[Celery Worker]
     
-    %% AI Pipeline (Ingestion)
+    %% AI Pipeline Ingestion
     C -->|Downloads from GDrive| D1[Download Images]
-    D1 -->|Detects & Crops Faces| FD[Face Detector src/face_detector.py]
-    FD -->|Extracts Vectors| FE[Face Embedder src/face_embedder.py]
-    FE -->|Adds to Index| FI[FAISS Index Builder src/build_index.py]
+    D1 -->|Detects and Crops Faces| FD[Face Detector]
+    FD -->|Extracts Vectors| FE[Face Embedder]
+    FE -->|Adds to Index| FI[FAISS Index Builder]
     
     %% Storage
-    FD -.->|Saves| V_raw[(Data Vol: data/faces)]
-    FE -.->|Saves| V_emb[(Data Vol: data/embeddings)]
-    FI -.->|Compiles| V_db[(Data Vol: database/faiss_index.bin)]
+    FD -.->|Saves| V_raw[(Data Vol - faces)]
+    FE -.->|Saves| V_emb[(Data Vol - embeddings)]
+    FI -.->|Compiles| V_db[(Data Vol - faiss_index)]
 
     %% Search Flow
-    B -->|Search Request| S[Face Search Engine src/search_face.py]
+    B -->|Search Request| S[Face Search Engine]
     S -->|Queries| V_db
     S -->|Returns Matches| B
     B -->|Sends Results| F
