@@ -24,12 +24,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-test.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install test dependencies
+        # Use requirements-test.txt to skip heavy AI packages (insightface, faiss, onnxruntime)
+        # which are not needed for unit tests since all AI calls are mocked.
+        run: pip install -r requirements-test.txt
 
       - name: Run tests
         env:

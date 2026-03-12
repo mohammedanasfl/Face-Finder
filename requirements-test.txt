@@ -1,0 +1,12 @@
+# Lightweight dependencies required only for running unit tests.
+# Heavy AI packages (insightface, faiss-cpu, onnxruntime, opencv) are NOT
+# needed because all AI calls are mocked in tests.
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.9
+python-jose[cryptography]==3.3.0
+celery==5.3.6
+redis==5.0.1
+numpy==1.26.3
+pytest>=8.0.0
+httpx>=0.27.0
