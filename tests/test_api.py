@@ -78,11 +78,13 @@ class ApiTests(unittest.TestCase):
     @patch("app.app.perform_face_search")
     @patch("app.app.save_upload_file")
     @patch("app.app.os.remove")
+    @patch("app.app.os.path.exists")
     @patch("app.app.os.listdir")
-    def test_search_face_returns_ranked_results(self, mock_listdir, mock_remove, mock_save, mock_search):
+    def test_search_face_returns_ranked_results(self, mock_listdir, mock_exists, mock_remove, mock_save, mock_search):
         """POSITIVE: Valid selfie returns matched event photos ranked by score"""
         token = self.get_token("test-user-secret")
         mock_save.return_value = os.path.join(ROOT_DIR, "uploads", "query-file.jpg")
+        mock_exists.return_value = True  # ensures os.remove is called in the finally block
         mock_search.return_value = [
             {"face": "event-photo_face1.jpg", "distance": 0.91},
             {"face": "other-photo_face1.jpg", "distance": 0.22},
@@ -105,13 +107,15 @@ class ApiTests(unittest.TestCase):
     @patch("app.app.perform_face_search")
     @patch("app.app.save_upload_file")
     @patch("app.app.os.remove")
+    @patch("app.app.os.path.exists")
     @patch("app.app.os.listdir")
     def test_search_face_returns_404_when_no_matches_above_threshold(
-        self, mock_listdir, mock_remove, mock_save, mock_search
+        self, mock_listdir, mock_exists, mock_remove, mock_save, mock_search
     ):
         """NEGATIVE: All results below threshold returns 404"""
         token = self.get_token("test-user-secret")
         mock_save.return_value = os.path.join(ROOT_DIR, "uploads", "query-file.jpg")
+        mock_exists.return_value = True
         mock_search.return_value = [
             {"face": "event-photo_face1.jpg", "distance": 0.10},
         ]
@@ -127,13 +131,15 @@ class ApiTests(unittest.TestCase):
     @patch("app.app.perform_face_search")
     @patch("app.app.save_upload_file")
     @patch("app.app.os.remove")
+    @patch("app.app.os.path.exists")
     @patch("app.app.os.listdir")
     def test_search_face_deduplicates_same_source_image(
-        self, mock_listdir, mock_remove, mock_save, mock_search
+        self, mock_listdir, mock_exists, mock_remove, mock_save, mock_search
     ):
         """POSITIVE: Multiple faces from same source image deduplicated to one result"""
         token = self.get_token("test-user-secret")
         mock_save.return_value = os.path.join(ROOT_DIR, "uploads", "query-file.jpg")
+        mock_exists.return_value = True
         mock_search.return_value = [
             {"face": "event-photo_face1.jpg", "distance": 0.95},
             {"face": "event-photo_face2.jpg", "distance": 0.88},
@@ -152,14 +158,15 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["results"][0]["filename"], "event-photo.jpg")
 
     def test_search_face_rejects_unauthenticated_request(self):
-        """NEGATIVE: No auth token returns 403"""
+        """NEGATIVE: No auth token returns 401 (OAuth2PasswordBearer behavior)"""
         response = self.client.post(
             "/search-face",
             files={"file": ("person.jpg", io.BytesIO(b"fake"), "image/jpeg")},
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
-    def test_search_face_rejects_admin_token(self):
+    @patch("app.app.save_upload_file")  # prevent cv2 import via file processing before auth fires
+    def test_search_face_rejects_admin_token(self, mock_save):
         """NEGATIVE: Admin token cannot access user /search-face endpoint"""
         token = self.get_token("test-admin-secret")
         response = self.client.post(
@@ -224,21 +231,21 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_admin_upload_rejects_unauthenticated(self):
-        """NEGATIVE: No token returns 403"""
+        """NEGATIVE: No token returns 401 (OAuth2PasswordBearer behavior)"""
         response = self.client.post(
             "/admin/upload-images",
             files=[("files", ("event.jpg", io.BytesIO(b"a"), "image/jpeg"))],
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
     def test_admin_upload_rejects_expired_token(self):
-        """NEGATIVE: Fake/tampered JWT returns 403"""
+        """NEGATIVE: Fake/tampered JWT returns 401 (invalid token, not wrong role)"""
         response = self.client.post(
             "/admin/upload-images",
             files=[("files", ("event.jpg", io.BytesIO(b"a"), "image/jpeg"))],
             headers={"Authorization": "Bearer completely.fake.token"},
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
     # ─────────────────────────────────────────────
     # Admin: Drive Import
@@ -346,9 +353,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_job_status_rejects_unauthenticated(self):
-        """NEGATIVE: No auth token returns 403"""
+        """NEGATIVE: No auth token returns 401 (OAuth2PasswordBearer behavior)"""
         response = self.client.get("/admin/job-status/some-job")
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
 
 if __name__ == "__main__":
