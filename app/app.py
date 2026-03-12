@@ -1,162 +1,181 @@
 import os
-import sys
-import shutil
+import re
 import uuid
 from typing import List
-from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
+
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles # Keep this, it was in original but not in provided Code Edit imports
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # This was in original, but not in provided Code Edit imports. Assuming it's no longer needed or handled differently.
-from config import UPLOADS_PATH, RAW_IMAGES_PATH, FACES_PATH # Keep UPLOADS_PATH and FACES_PATH, RAW_IMAGES_PATH is in Code Edit
-from src.search_face import search_face # This was in original, but Code Edit uses search_face_in_index. I will use search_face_in_index as per the Code Edit.
-from src.admin_processor import process_new_images
-from app.security import create_access_token
-from app.auth import get_current_user, get_current_admin
+from app.auth import get_current_admin, get_current_user
+from app.celery_app import celery_app
+from app.jobs.import_drive_job import get_job_status, initialize_job
+from app.security import ADMIN_SECRET_KEY, USER_SECRET_KEY, create_access_token
+from app.uploads import save_upload_file
+from config import (
+    CORS_ALLOW_ORIGINS,
+    RAW_IMAGES_PATH,
+    SEARCH_SIMILARITY_THRESHOLD,
+    UPLOADS_PATH,
+)
 
-# Import Celery and Job Tracking
-from app.workers.celery_worker import celery_app
-from app.jobs.import_drive_job import initialize_job, get_job_status
 
 os.makedirs(UPLOADS_PATH, exist_ok=True)
 os.makedirs(RAW_IMAGES_PATH, exist_ok=True)
-os.makedirs(FACES_PATH, exist_ok=True)
 
 app = FastAPI()
 
-# Allow frontend to communicate
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
-# Mount the raw images directory so the frontend can display matched full photos
 app.mount("/raw_images", StaticFiles(directory=RAW_IMAGES_PATH), name="raw_images")
+
 
 class LoginRequest(BaseModel):
     secret_key: str
 
-class DriveImportRequest(BaseModel): # Added from Code Edit
-    drive_folder_id: str # Added from Code Edit
+
+class DriveImportRequest(BaseModel):
+    drive_folder_id: str
+
+
+def get_original_image_name(face_filename, raw_images_list):
+    base_name = re.sub(r"_face\d+\.jpg$", "", face_filename)
+    for ext in [".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP"]:
+        if (base_name + ext) in raw_images_list:
+            return base_name + ext
+    return None
+
+
+def perform_face_search(image_path: str):
+    from src.search_face import search_face
+
+    return search_face(image_path)
+
 
 @app.post("/login")
 def login(request: LoginRequest):
-    # Fetch latest environment variables dynamically with fallbacks
-    admin_key = os.getenv("ADMIN_SECRET_KEY", "admin-1234")
-    user_key = os.getenv("USER_SECRET_KEY", "user-1234")
-    
-    if request.secret_key == admin_key:
+    if request.secret_key == ADMIN_SECRET_KEY:
         role = "admin"
         username = "admin"
-    elif request.secret_key == user_key:
+    elif request.secret_key == USER_SECRET_KEY:
         role = "user"
         username = "user"
     else:
         raise HTTPException(status_code=401, detail="Invalid secret key")
-    
+
     access_token = create_access_token(data={"sub": username, "role": role})
     return {"access_token": access_token, "token_type": "bearer", "role": role}
+
 
 @app.post("/admin/upload-images")
 async def upload_event_images(
     files: List[UploadFile] = File(...),
-    current_admin: dict = Depends(get_current_admin)
+    current_admin: dict = Depends(get_current_admin),
 ):
+    if not files:
+        raise HTTPException(status_code=400, detail="At least one image is required")
+
     saved_paths = []
-    # Save the original event photos
-    for file in files:
-        save_path = os.path.join(RAW_IMAGES_PATH, file.filename)
-        with open(save_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        saved_paths.append(save_path)
-        
-    # Process only the newly uploaded images and rebuild FAISS index
-    faces_added = process_new_images(saved_paths)
-    
-    return JSONResponse(status_code=200, content={
-        "message": f"Successfully processed {len(saved_paths)} images and indexed {faces_added} faces.",
-        "images_uploaded": len(saved_paths),
-        "faces_indexed": faces_added
-    })
+    try:
+        for upload in files:
+            saved_paths.append(save_upload_file(upload, RAW_IMAGES_PATH, prefix="event"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    job_id = str(uuid.uuid4())
+    initialize_job(job_id, job_type="upload")
+    celery_app.send_task("process_uploaded_images", args=[job_id, saved_paths])
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "job_id": job_id,
+            "status": "queued",
+            "images_received": len(saved_paths),
+        },
+    )
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-import re
-
-def get_original_image_name(face_filename, raw_images_list):
-    base_name = re.sub(r'_face\d+\.jpg$', '', face_filename)
-    for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-        if (base_name + ext) in raw_images_list:
-            return base_name + ext
-    return base_name + ".jpg"
 
 @app.post("/search-face")
 async def search_face_endpoint(
     file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    save_path = os.path.join(UPLOADS_PATH, file.filename)
-    with open(save_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    try:
+        save_path = save_upload_file(file, UPLOADS_PATH, prefix="query")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    results = search_face(save_path)
+    try:
+        results = perform_face_search(save_path)
+    finally:
+        if os.path.exists(save_path):
+            os.remove(save_path)
 
     raw_images_list = set(os.listdir(RAW_IMAGES_PATH)) if os.path.exists(RAW_IMAGES_PATH) else set()
-    
-    unique_matches = []
+
+    ranked_matches = []
     seen = set()
-    
-    # Cosine Similarity threshold (higher is better, 1.0 is exact match)
-    threshold = 0.40
 
-    for idx, r in enumerate(results):
-        if idx < 20:
-            print(f"DEBUG: Face {r['face']} has similarity {r['distance']:.4f}")
-            
-        # For Inner Product / Cosine Similarity, we want values GREATER than the threshold
-        if r["distance"] > threshold:
-            orig_name = get_original_image_name(r["face"], raw_images_list)
-            if orig_name not in seen:
-                seen.add(orig_name)
-                unique_matches.append(orig_name)
+    for result in results:
+        similarity = float(result["distance"])
+        if similarity < SEARCH_SIMILARITY_THRESHOLD:
+            continue
 
-    if not unique_matches:
+        orig_name = get_original_image_name(result["face"], raw_images_list)
+        if not orig_name or orig_name in seen:
+            continue
+
+        seen.add(orig_name)
+        ranked_matches.append({"filename": orig_name, "score": round(similarity, 4)})
+
+    if not ranked_matches:
         raise HTTPException(status_code=404, detail="No matching faces found.")
 
-    return JSONResponse(content={"matches": unique_matches})
+    return JSONResponse(
+        content={
+            "threshold": SEARCH_SIMILARITY_THRESHOLD,
+            "matches": [match["filename"] for match in ranked_matches],
+            "results": ranked_matches,
+        }
+    )
+
 
 @app.post("/admin/import-drive")
-async def import_drive_folder(request: DriveImportRequest, current_admin: dict = Depends(get_current_admin)):
-    """Triggers the async Celery background task to pull images from Google Drive."""
+async def import_drive_folder(
+    request: DriveImportRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
     try:
         job_id = str(uuid.uuid4())
-        # Instatiate the Redis tracking hash
-        initialize_job(job_id)
-        
-        # Fire off the worker asynchronously
+        initialize_job(job_id, job_type="drive_import")
         celery_app.send_task("process_drive_folder", args=[job_id, request.drive_folder_id])
-        
-        return JSONResponse(content={
-            "job_id": job_id,
-            "status": "processing"
-        })
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+        return JSONResponse(content={"job_id": job_id, "status": "queued"})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
 
 @app.get("/admin/job-status/{job_id}")
-async def get_drive_import_status(job_id: str, current_admin: dict = Depends(get_current_admin)):
-    """Polls the Redis job hash to return live counts."""
+async def get_drive_import_status(
+    job_id: str,
+    current_admin: dict = Depends(get_current_admin),
+):
     try:
         status_data = get_job_status(job_id)
         return JSONResponse(content=status_data)
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

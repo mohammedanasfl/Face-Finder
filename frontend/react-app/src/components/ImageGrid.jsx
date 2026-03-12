@@ -26,7 +26,7 @@ const ImageGrid = ({ matches }) => {
                 {matches.map((match, idx) => (
                     <ImageCard
                         key={idx}
-                        filename={match}
+                        match={match}
                         onClick={() => setSelectedImage(match)}
                     />
                 ))}
@@ -40,12 +40,12 @@ const ImageGrid = ({ matches }) => {
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                         <img
-                            src={`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/raw_images/${selectedImage}`}
-                            alt={selectedImage}
+                            src={`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/raw_images/${selectedImage.filename}`}
+                            alt={selectedImage.filename}
                             className="lightbox-img"
                         />
                         <div className="lightbox-footer">
-                            {selectedImage}
+                            {selectedImage.filename} ({selectedImage.score})
                         </div>
                     </div>
                 </div>

@@ -1,18 +1,16 @@
-import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt
+from config import JWT_SECRET_KEY, ADMIN_SECRET_KEY, USER_SECRET_KEY
 
-# Secret keys for signing and authentication (pulled from environment if available)
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your_jwt_signing_secret_key_here")
-ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "admin-1234")
-USER_SECRET_KEY = os.getenv("USER_SECRET_KEY", "user-1234")
+# Secret keys are required at startup and loaded from the environment.
+SECRET_KEY = JWT_SECRET_KEY
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

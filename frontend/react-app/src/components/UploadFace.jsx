@@ -31,8 +31,8 @@ const UploadFace = ({ onSearchComplete }) => {
         setError('');
 
         try {
-            const matches = await searchFaces(file);
-            onSearchComplete(matches);
+            const response = await searchFaces(file);
+            onSearchComplete(response.results || []);
         } catch (err) {
             setError(err.response?.data?.detail || 'Error searching faces');
             onSearchComplete([]);

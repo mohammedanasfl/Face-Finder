@@ -2,9 +2,29 @@ import os
 import cv2
 import numpy as np
 import pickle
+import tempfile
 from src.utils import get_model
 from src.build_index import build_faiss_index
-from config import RAW_IMAGES_PATH, FACES_PATH, EMBEDDINGS_PATH
+from src.file_lock import file_lock
+from config import FACES_PATH, EMBEDDINGS_PATH, LOCKS_PATH
+
+
+INDEX_LOCK_PATH = os.path.join(LOCKS_PATH, "indexing.lock")
+
+
+def _atomic_save_numpy(path, array):
+    with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(path), suffix=".npy") as temp_file:
+        temp_path = temp_file.name
+    np.save(temp_path, array)
+    os.replace(temp_path, path)
+
+
+def _atomic_save_pickle(path, value):
+    with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(path), suffix=".pkl") as temp_file:
+        temp_path = temp_file.name
+    with open(temp_path, "wb") as handle:
+        pickle.dump(value, handle)
+    os.replace(temp_path, path)
 
 def process_new_images(new_image_paths):
     """
@@ -56,27 +76,25 @@ def process_new_images(new_image_paths):
     if not new_embeddings:
         return 0 # No new faces found
         
-    # Append to existing embeddings
     npy_path = os.path.join(EMBEDDINGS_PATH, "embeddings.npy")
     pkl_path = os.path.join(EMBEDDINGS_PATH, "image_paths.pkl")
-    
-    if os.path.exists(npy_path) and os.path.exists(pkl_path):
-        existing_embeddings = np.load(npy_path)
-        with open(pkl_path, "rb") as f:
-            existing_paths = pickle.load(f)
-            
-        updated_embeddings = np.vstack((existing_embeddings, np.array(new_embeddings)))
-        updated_paths = existing_paths + new_face_filenames
-    else:
-        updated_embeddings = np.array(new_embeddings)
-        updated_paths = new_face_filenames
-        
-    # Save back to disk
-    np.save(npy_path, updated_embeddings)
-    with open(pkl_path, "wb") as f:
-        pickle.dump(updated_paths, f)
-        
-    # Rebuild FAISS index
-    build_faiss_index()
-    
+
+    with file_lock(INDEX_LOCK_PATH):
+        if os.path.exists(npy_path) and os.path.exists(pkl_path):
+            existing_embeddings = np.load(npy_path)
+            with open(pkl_path, "rb") as f:
+                existing_paths = pickle.load(f)
+
+            updated_embeddings = np.vstack((existing_embeddings, np.array(new_embeddings)))
+            updated_paths = existing_paths + new_face_filenames
+        else:
+            updated_embeddings = np.array(new_embeddings)
+            updated_paths = new_face_filenames
+
+        _atomic_save_numpy(npy_path, updated_embeddings)
+        _atomic_save_pickle(pkl_path, updated_paths)
+
+        # Rebuild FAISS index while holding the same lock so readers never see partial writes.
+        build_faiss_index()
+
     return len(new_embeddings)

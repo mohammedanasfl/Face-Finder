@@ -29,7 +29,6 @@ const ImportFromDrive = () => {
         }
     };
 
-    // Polling Mechanism
     useEffect(() => {
         let intervalId;
 
@@ -40,7 +39,7 @@ const ImportFromDrive = () => {
                 const data = await getJobStatus(jobId);
                 setStatus(data);
 
-                if (data.status === 'completed' || data.status.startsWith('failed') || data.status === 'completed_no_images') {
+                if (data.status === 'completed' || data.status === 'failed' || data.status === 'completed_no_images') {
                     clearInterval(intervalId);
                     setLoading(false);
                 }
@@ -53,7 +52,7 @@ const ImportFromDrive = () => {
         };
 
         if (jobId && loading) {
-            // Poll every 3 seconds
+            checkStatus();
             intervalId = setInterval(checkStatus, 3000);
         }
 
@@ -88,7 +87,6 @@ const ImportFromDrive = () => {
 
             {error && <p style={{ color: '#ff5c5c', marginTop: '16px', fontSize: '14px' }}>{error}</p>}
 
-            {/* Live Progress Tracker UI */}
             {status && (
                 <div style={{ marginTop: '24px', padding: '16px', backgroundColor: 'var(--bg-input)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -98,8 +96,8 @@ const ImportFromDrive = () => {
                             fontWeight: '600',
                             padding: '4px 8px',
                             borderRadius: '6px',
-                            backgroundColor: status.status === 'completed' ? 'rgba(76, 175, 80, 0.15)' : (status.status.startsWith('failed') ? 'rgba(244, 67, 54, 0.15)' : 'rgba(123, 77, 252, 0.15)'),
-                            color: status.status === 'completed' ? '#4CAF50' : (status.status.startsWith('failed') ? '#f44336' : 'var(--primary)')
+                            backgroundColor: status.status === 'completed' ? 'rgba(76, 175, 80, 0.15)' : (status.status === 'failed' ? 'rgba(244, 67, 54, 0.15)' : 'rgba(123, 77, 252, 0.15)'),
+                            color: status.status === 'completed' ? '#4CAF50' : (status.status === 'failed' ? '#f44336' : 'var(--primary)')
                         }}>
                             {status.status.toUpperCase()}
                         </span>
@@ -112,9 +110,10 @@ const ImportFromDrive = () => {
                         </div>
                         <div style={{ padding: '12px', backgroundColor: 'var(--bg-dark)', borderRadius: '8px' }}>
                             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Faces Indexed</div>
-                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>{status.faces_detected || 0}</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>{status.faces_indexed || 0}</div>
                         </div>
                     </div>
+                    {status.error && <p style={{ marginTop: '12px', color: '#ff5c5c' }}>{status.error}</p>}
                 </div>
             )}
         </div>
