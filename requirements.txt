@@ -11,4 +11,4 @@ redis==5.0.1
 gdown
 onnxruntime
 pytest>=8.0.0
-httpx>=0.27.0
+httpx==0.24.1
