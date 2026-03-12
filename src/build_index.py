@@ -2,14 +2,12 @@ import numpy as np
 import faiss
 import pickle
 import os
-
-EMBEDDINGS_PATH = "data/embeddings"
-DATABASE_PATH = "database"
+import tempfile
+from config import EMBEDDINGS_PATH, DATABASE_PATH
 
 os.makedirs(DATABASE_PATH, exist_ok=True)
 
 def build_faiss_index():
-
     embeddings = np.load(os.path.join(EMBEDDINGS_PATH, "embeddings.npy"))
 
     with open(os.path.join(EMBEDDINGS_PATH, "image_paths.pkl"), "rb") as f:
@@ -29,10 +27,16 @@ def build_faiss_index():
 
     print("Total vectors indexed:", index.ntotal)
 
-    faiss.write_index(index, os.path.join(DATABASE_PATH, "faiss_index.bin"))
+    with tempfile.NamedTemporaryFile(delete=False, dir=DATABASE_PATH, suffix=".bin") as temp_index_file:
+        temp_index_path = temp_index_file.name
+    faiss.write_index(index, temp_index_path)
+    os.replace(temp_index_path, os.path.join(DATABASE_PATH, "faiss_index.bin"))
 
-    with open(os.path.join(DATABASE_PATH, "image_map.pkl"), "wb") as f:
+    with tempfile.NamedTemporaryFile(delete=False, dir=DATABASE_PATH, suffix=".pkl") as temp_map_file:
+        temp_map_path = temp_map_file.name
+    with open(temp_map_path, "wb") as f:
         pickle.dump(image_paths, f)
+    os.replace(temp_map_path, os.path.join(DATABASE_PATH, "image_map.pkl"))
 
     print("FAISS index saved successfully")
 

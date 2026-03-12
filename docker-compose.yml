@@ -14,9 +14,11 @@ services:
       - ./models:/root/.insightface/models
     environment:
       - PYTHONUNBUFFERED=1
-      - JWT_SECRET_KEY=yoursecretjwtsigningkey
-      - ADMIN_SECRET_KEY=admin-1234
-      - USER_SECRET_KEY=user-1234
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?set JWT_SECRET_KEY}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:?set ADMIN_SECRET_KEY}
+      - USER_SECRET_KEY=${USER_SECRET_KEY:?set USER_SECRET_KEY}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      - SEARCH_SIMILARITY_THRESHOLD=${SEARCH_SIMILARITY_THRESHOLD:-0.40}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     restart: unless-stopped
@@ -43,6 +45,10 @@ services:
       - ./models:/root/.insightface/models
     environment:
       - PYTHONUNBUFFERED=1
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?set JWT_SECRET_KEY}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:?set ADMIN_SECRET_KEY}
+      - USER_SECRET_KEY=${USER_SECRET_KEY:?set USER_SECRET_KEY}
+      - SEARCH_SIMILARITY_THRESHOLD=${SEARCH_SIMILARITY_THRESHOLD:-0.40}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:

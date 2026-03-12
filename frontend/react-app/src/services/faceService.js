@@ -8,7 +8,7 @@ export const searchFaces = async (file) => {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    return response.data.matches;
+    return response.data;
 };
 
 export const uploadAdminImages = async (files) => {

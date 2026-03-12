@@ -1,82 +1,85 @@
 import os
-import shutil
-from concurrent.futures import ThreadPoolExecutor
-from celery import Celery
-import os
 import re
+
 import gdown
-from celery import Celery
-from app.jobs.import_drive_job import update_job_progress
-from src.admin_processor import process_new_images
+
+from app.celery_app import celery_app
+from app.jobs.import_drive_job import fail_job, update_job_progress
 from config import RAW_IMAGES_PATH
+from src.admin_processor import process_new_images
 
-import ssl
 
-# Initialize Celery app
-broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-
-# If using a secure Redis connection (e.g., Render), configure SSL kwargs explicitly
-ssl_kwargs = {}
-if broker_url.startswith("rediss://"):
-    # Strip any dangling query parameters we previously injected
-    if "?" in broker_url:
-        broker_url = broker_url.split("?")[0]
-    ssl_kwargs = {
-        "ssl_cert_reqs": ssl.CERT_NONE
-    }
-
-celery_app = Celery(
-    "workers", 
-    broker=broker_url, 
-    backend=broker_url,
-    broker_use_ssl=ssl_kwargs if ssl_kwargs else None,
-    redis_backend_use_ssl=ssl_kwargs if ssl_kwargs else None
-)
 def parse_folder_id(input_string):
     """Extracts the folder ID if the user pastes a full Google Drive URL."""
-    match = re.search(r'folders/([A-Za-z0-9_-]+)', input_string)
+    match = re.search(r"folders/([A-Za-z0-9_-]+)", input_string)
     if match:
         return match.group(1)
     return input_string
 
+
+def _filter_image_paths(paths):
+    valid_extensions = {".png", ".jpg", ".jpeg", ".webp"}
+    return [
+        path
+        for path in paths
+        if any(path.lower().endswith(ext) for ext in valid_extensions)
+    ]
+
+
+@celery_app.task(name="process_uploaded_images")
+def process_uploaded_images_task(job_id: str, image_paths: list[str]):
+    try:
+        update_job_progress(
+            job_id,
+            total_files=len(image_paths),
+            images_received=len(image_paths),
+            status="processing",
+        )
+        faces_added = process_new_images(image_paths)
+        update_job_progress(job_id, faces_indexed=faces_added, status="completed")
+        return {"faces_indexed": faces_added}
+    except Exception as exc:
+        fail_job(job_id, str(exc))
+        raise
+
+
 @celery_app.task(name="process_drive_folder")
 def process_drive_folder_task(job_id: str, drive_folder_id: str):
     """
-    Background Task: Uses gdown to pull a generic public Google Drive folder, 
-    detects their faces, and appends them to FAISS.
+    Background task: downloads a public Google Drive folder and indexes the images.
     """
     try:
         update_job_progress(job_id, status="downloading")
-        
+
         folder_id = parse_folder_id(drive_folder_id)
-        url = f'https://drive.google.com/drive/folders/{folder_id}?usp=sharing'
-        
-        # Download the folder contents natively (returns a list of string filepaths)
-        # Note: remaining_ok=True bypasses the strict 50-file limit error by downloading the first 50 files.
-        downloaded = gdown.download_folder(url, output=RAW_IMAGES_PATH, quiet=False, use_cookies=False, remaining_ok=True)
-        
+        url = f"https://drive.google.com/drive/folders/{folder_id}?usp=sharing"
+        downloaded = gdown.download_folder(
+            url,
+            output=RAW_IMAGES_PATH,
+            quiet=False,
+            use_cookies=False,
+            remaining_ok=False,
+        )
+
         if not downloaded:
             update_job_progress(job_id, status="completed_no_images")
-            return "No images found or folder not public."
-            
-        # Filter for actual images
-        valid_extensions = {'.png', '.jpg', '.jpeg', '.JPG', '.PNG', '.JPEG'}
-        image_paths = []
-        for path in downloaded:
-            if any(path.lower().endswith(ext.lower()) for ext in valid_extensions):
-                image_paths.append(path)
-                
-        update_job_progress(job_id, images_downloaded=len(image_paths), status="processing")
-        
-        # 2. Run AI logic using the downloaded files
-        if image_paths:
-            faces_added = process_new_images(image_paths)
-            update_job_progress(job_id, faces_detected=faces_added, status="completed")
-            return f"Success: {faces_added} faces indexed"
-        else:
-            update_job_progress(job_id, status="failed_no_valid_images")
-            return "Failed: No valid images found in folder"
+            return {"faces_indexed": 0}
 
-    except Exception as e:
-        update_job_progress(job_id, status=f"failed: {str(e)}")
-        raise e
+        image_paths = _filter_image_paths(downloaded)
+        update_job_progress(
+            job_id,
+            total_files=len(downloaded),
+            images_downloaded=len(image_paths),
+            status="processing",
+        )
+
+        if not image_paths:
+            fail_job(job_id, "No valid image files found in the Drive folder")
+            return {"faces_indexed": 0}
+
+        faces_added = process_new_images(image_paths)
+        update_job_progress(job_id, faces_indexed=faces_added, status="completed")
+        return {"faces_indexed": faces_added}
+    except Exception as exc:
+        fail_job(job_id, str(exc))
+        raise
