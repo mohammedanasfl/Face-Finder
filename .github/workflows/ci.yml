@@ -53,10 +53,12 @@ jobs:
         with:
           fetch-depth: 0  # full history needed for git push
 
-      - name: Push to HuggingFace Spaces
+      - name: Strip binary files from history and push to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          pip install git-filter-repo
+          git filter-repo --path screenshot.png --invert-paths --force
           git config user.email "ci-bot@github.com"
           git config user.name "GitHub CI Bot"
           git remote add huggingface https://anas21072001:$HF_TOKEN@huggingface.co/spaces/anas21072001/Face-Finder
