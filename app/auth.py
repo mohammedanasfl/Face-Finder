@@ -28,3 +28,12 @@ def get_current_admin(current_user: dict = Depends(get_current_user)):
             detail="The user doesn't have enough privileges"
         )
     return current_user
+
+def get_current_regular_user(current_user: dict = Depends(get_current_user)):
+    """Allows only non-admin users. Admins should use admin-specific endpoints."""
+    if current_user.get("role") != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint is for regular users only"
+        )
+    return current_user

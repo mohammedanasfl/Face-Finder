@@ -165,9 +165,8 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
-    @patch("app.app.save_upload_file")  # prevent cv2 import via file processing before auth fires
-    def test_search_face_rejects_admin_token(self, mock_save):
-        """NEGATIVE: Admin token cannot access user /search-face endpoint"""
+    def test_search_face_rejects_admin_token(self):
+        """NEGATIVE: Admin token cannot access user-only /search-face endpoint (403)"""
         token = self.get_token("test-admin-secret")
         response = self.client.post(
             "/search-face",

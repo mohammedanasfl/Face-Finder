@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.auth import get_current_admin, get_current_user
+from app.auth import get_current_admin, get_current_user, get_current_regular_user
 from app.celery_app import celery_app
 from app.jobs.import_drive_job import get_job_status, initialize_job
 from app.security import ADMIN_SECRET_KEY, USER_SECRET_KEY, create_access_token
@@ -112,7 +112,7 @@ def health():
 @app.post("/search-face")
 async def search_face_endpoint(
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_regular_user),
 ):
     try:
         save_path = save_upload_file(file, UPLOADS_PATH, prefix="query")
