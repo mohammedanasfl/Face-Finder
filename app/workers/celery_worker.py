@@ -58,7 +58,7 @@ def process_drive_folder_task(job_id: str, drive_folder_id: str):
             output=RAW_IMAGES_PATH,
             quiet=False,
             use_cookies=False,
-            remaining_ok=False,
+            remaining_ok=True,
         )
 
         if not downloaded:
