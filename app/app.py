@@ -143,6 +143,13 @@ async def search_face_endpoint(
         ranked_matches.append({"filename": orig_name, "score": round(similarity, 4)})
 
     if not ranked_matches:
+        from config import DATABASE_PATH
+        index_exists = os.path.exists(os.path.join(DATABASE_PATH, "faiss_index.bin"))
+        if not index_exists:
+            raise HTTPException(
+                status_code=404,
+                detail="No images have been indexed yet. Please import event photos via the Admin panel first."
+            )
         raise HTTPException(status_code=404, detail="No matching faces found.")
 
     return JSONResponse(

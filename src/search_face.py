@@ -9,6 +9,9 @@ FAISS_INDEX_PATH = os.path.join(DATABASE_PATH, "faiss_index.bin")
 IMAGE_MAP_PATH = os.path.join(DATABASE_PATH, "image_map.pkl")
 
 def search_face(query_image_path):
+    # Guard: FAISS index doesn't exist yet (no images have been indexed)
+    if not os.path.exists(FAISS_INDEX_PATH) or not os.path.exists(IMAGE_MAP_PATH):
+        return []
     embedding = get_embedding(query_image_path)
     if embedding is None:
         return []
